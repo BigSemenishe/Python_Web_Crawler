@@ -1,11 +1,7 @@
-import webbrowser
 import time
-import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.by import By
 from storage import url_storage
 from storage import my_bd
 
