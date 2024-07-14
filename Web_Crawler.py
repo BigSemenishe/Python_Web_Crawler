@@ -2,29 +2,55 @@ import time
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from selenium import webdriver
+import psycopg2
 from storage import url_storage
-from storage import my_bd
 
+host = "localhost"
+user = "postgres"
+password = "uT#ookwKAEr98Bchuhie"
+db_name = "postgres"
 
 count = 0
 
 
 def url_extractor(url):
-    global my_bd
+    global connection, url_storage
     all_words = []
+    all_links = []
     with open("data_selenium.html", encoding='utf-8') as file:
         response = file.read()
         soup = BeautifulSoup(response, "lxml")
         for link in soup.find_all("a"):
             lnk = urljoin(url, link.get("href"))
+            if len(link.text) > 1:
+                words = link.text
+            else:
+                words = "my_null"
             url_storage.append(lnk)
-            word = link.text
-            all_words.append(word)
-    my_dict = {"link": url, "words": all_words}
-    my_bd.append(my_dict)
+            all_words.append(words.strip())
+            all_links.append(lnk.strip())
+
+    i = 0
+    connection = psycopg2.connect(host=host, user=user, password=password, database=db_name)
+    connection.autocommit = True
+    print("[INFO] Successfully connected to my_bd!")
+    while i < len(all_words):
+        if all_words[i] == "my_null":
+            i += 1
+            continue
+        try:
+            with connection.cursor() as cursor:
+                sql_insert_query = """ INSERT INTO my_bd (main_url, words, link) VALUES (%s, %s, %s)"""
+                insert_tuple_1 = (url, all_words[i], all_links[i])
+                cursor.execute(sql_insert_query, insert_tuple_1)
+        except Exception as ex:
+            print(" [ERROR] ", ex)
+        i += 1
+    connection.close()
 
 
 def html_parser(url):
+    global driver
     try:
         driver = webdriver.Firefox()
         driver.get(url)
@@ -33,9 +59,12 @@ def html_parser(url):
             file.write(driver.page_source)
         url_extractor(url)
         driver.close()
+
     except Exception as ex:
-        print(ex)
-        print("Page parsed unsuccessfully!")
+        print(" [ERROR] ", ex)
+        print("Failed to parse the page!")
+        if driver:
+            driver.close()
 
 
 def duplicate(lst):
@@ -67,18 +96,21 @@ def clear_url_storage(lst):
 
 
 def main():
-    global url_storage
-    global count
+    global url_storage, count, connection
     while True:
         command = input("What are you doing next?\n\nWork with url_storage:\n1. Exit\n2. Show \
 url_storage\n3. Add url to url_storage\n4. Add a list of urls to url_storage\n5. Delete your url from url_storage\n6. \
-Clear url_storage\n\nWork with HTML Parser:\n7. Parse all urls from url_storage\n")
+Clean url_storage\n\nWork with HTML Parser:\n7. Parse all urls from url_storage and add everything into my_bd\n\n\
+Work with my_bd:\n8. Show my_bd\n9. Clean my_bd\n")
         match command.split():
             case ["1"]:
                 print("Goodbye!")
                 break
             case ["2"]:
-                print(url_storage, "\n________________________________")
+                print("length :", len(url_storage), "\nurl_storage :")
+                for element in url_storage:
+                    print(element)
+                print("\n________________________________")
             case ["3"]:
                 add_url_to_url_storage()
                 print("Successfully!\n________________________________")
@@ -92,16 +124,49 @@ Clear url_storage\n\nWork with HTML Parser:\n7. Parse all urls from url_storage\
                 clear_url_storage(url_storage)
                 print("Successfully!\n________________________________")
             case ["7"]:
-                while count < len(url_storage):
-                    new_list = url_storage
-                    url_storage = duplicate(new_list)
-                    print("Cleared of duplicates. Keep going...\n")
-                    length = len(url_storage)
-                    html_parser(url_storage[count])
-                    print(f"Link number {count} of {length} parsed successfully!\n")
-                    count += 1
-                print("There are no pages left in the url_storage for parsing")
-
+                if len(url_storage) != 0:
+                    amount_of_urls_to_parse = int(input("How many urls do you want to parse : "))
+                    if amount_of_urls_to_parse <= len(url_storage):
+                        while count != amount_of_urls_to_parse:
+                            new_list = url_storage
+                            url_storage = duplicate(new_list)
+                            print("Cleared of duplicates. Keep going...\n")
+                            length = len(url_storage)
+                            html_parser(url_storage[count])
+                            print(f"Link number {count} of {length} parsed successfully!\n")
+                            count += 1
+                        new_list = url_storage
+                        url_storage = duplicate(new_list)
+                        print("All pages have been parsed!\n________________________________")
+                    else:
+                        print("There are not enough urls in the url_storage\n________________________________")
+                else:
+                    print("Url_storage is empty\n________________________________")
+            case ["8"]:
+                try:
+                    connection = psycopg2.connect(host=host, user=user, password=password, database=db_name)
+                    print("[INFO] Successfully connected to my_bd!")
+                    with connection.cursor() as cursor:
+                        postgreSQL_select_Query = "SELECT * FROM my_bd"
+                        cursor.execute(postgreSQL_select_Query)
+                        info = cursor.fetchall()
+                        for row in info:
+                            print("main_url =", row[0], " | ", "words =", row[1], " | ", "link =", row[2], "\n")
+                    connection.close()
+                except Exception as ex:
+                    print(" [ERROR] ", ex)
+                print("\n________________________________")
+            case ["9"]:
+                try:
+                    connection = psycopg2.connect(host=host, user=user, password=password, database=db_name)
+                    print("[INFO] Successfully connected to my_bd!")
+                    with connection.cursor() as cursor:
+                        cursor.execute("""DELETE FROM my_bd""")
+                        connection.commit()
+                    connection.close()
+                except Exception as ex:
+                    print(" [ERROR] ", ex)
+                print("Cleaned successfully!\n________________________________")
             case _:  # default
                 print(f"Sorry, I couldn't understand {command!r}\n________________________________")
 
