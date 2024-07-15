@@ -22,7 +22,7 @@ def url_extractor(url):
         soup = BeautifulSoup(response, "lxml")
         for link in soup.find_all("a"):
             lnk = urljoin(url, link.get("href"))
-            if len(link.text) > 1:
+            if len(link.text) > 4:
                 words = link.text
             else:
                 words = "my_null"
@@ -55,6 +55,9 @@ def html_parser(url):
         driver = webdriver.Firefox()
         driver.get(url)
         time.sleep(5)
+        for i in range(3):
+            driver.execute_script("window.scrollBy(0,document.body.scrollHeight)")
+            time.sleep(5)
         with open("data_selenium.html", "w", encoding="utf-8") as file:
             file.write(driver.page_source)
         url_extractor(url)
@@ -101,7 +104,7 @@ def main():
         command = input("What are you doing next?\n\nWork with url_storage:\n1. Exit\n2. Show \
 url_storage\n3. Add url to url_storage\n4. Add a list of urls to url_storage\n5. Delete your url from url_storage\n6. \
 Clean url_storage\n\nWork with HTML Parser:\n7. Parse all urls from url_storage and add everything into my_bd\n\n\
-Work with my_bd:\n8. Show my_bd\n9. Clean my_bd\n")
+Work with my_bd:\n8. Show my_bd\n9. Clean my_bd\n10. Search by words in my_bd\n")
         match command.split():
             case ["1"]:
                 print("Goodbye!")
@@ -150,8 +153,9 @@ Work with my_bd:\n8. Show my_bd\n9. Clean my_bd\n")
                         postgreSQL_select_Query = "SELECT * FROM my_bd"
                         cursor.execute(postgreSQL_select_Query)
                         info = cursor.fetchall()
+                        print("     Main_url     |      Words      |      Link     ")
                         for row in info:
-                            print("main_url =", row[0], " | ", "words =", row[1], " | ", "link =", row[2], "\n")
+                            print(row[0], " | ", row[1], " | ", row[2], "\n")
                     connection.close()
                 except Exception as ex:
                     print(" [ERROR] ", ex)
@@ -167,11 +171,29 @@ Work with my_bd:\n8. Show my_bd\n9. Clean my_bd\n")
                 except Exception as ex:
                     print(" [ERROR] ", ex)
                 print("Cleaned successfully!\n________________________________")
+            case ["10"]:
+                try:
+                    connection = psycopg2.connect(host=host, user=user, password=password, database=db_name)
+                    print("[INFO] Successfully connected to my_bd!")
+                    with connection.cursor() as cursor:
+                        postgreSQL_select_Query = "SELECT * FROM my_bd"
+                        cursor.execute(postgreSQL_select_Query)
+                        info = cursor.fetchall()
+                        needed_words = input("What are the words to search for: ")
+                        print("Here's what I found: ")
+                        print("     Main_url     |      Words      |      Link     ")
+                        for row in info:
+                            if needed_words in row[1]:
+                                print(row[0], " | ", row[1], " | ", row[2], "\n")
+                    connection.close()
+                except Exception as ex:
+                    print(" [ERROR] ", ex)
+                print("\n________________________________")
             case _:  # default
                 print(f"Sorry, I couldn't understand {command!r}\n________________________________")
 
-
 main()
+# case ["7"]:
 # Очищаем хранилище от дубликатов
 # Берём ссылку из хранилища ссылок
 # забираем её html код
