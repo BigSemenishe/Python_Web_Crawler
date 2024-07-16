@@ -101,7 +101,7 @@ def clear_url_storage(lst):
 def main():
     global url_storage, count, connection
     while True:
-        command = input("What are you doing next?\n\nWork with url_storage:\n1. Exit\n2. Show \
+        command = input("What are you doing next?\n\nWork with app:\n1. Exit\n\nWork with url_storage:\n2. Show \
 url_storage\n3. Add url to url_storage\n4. Add a list of urls to url_storage\n5. Delete your url from url_storage\n6. \
 Clean url_storage\n\nWork with HTML Parser:\n7. Parse all urls from url_storage and add everything into my_bd\n\n\
 Work with my_bd:\n8. Show my_bd\n9. Clean my_bd\n10. Search by words in my_bd\n")
@@ -193,7 +193,6 @@ Work with my_bd:\n8. Show my_bd\n9. Clean my_bd\n10. Search by words in my_bd\n"
                 print(f"Sorry, I couldn't understand {command!r}\n________________________________")
 
 main()
-# case ["7"]:
 # Очищаем хранилище от дубликатов
 # Берём ссылку из хранилища ссылок
 # забираем её html код
